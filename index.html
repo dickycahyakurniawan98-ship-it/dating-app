@@ -1,337 +1,348 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
-
-// Pastikan Anda memuat script Tailwind CSS di HTML jika menggunakan ini di luar lingkungan khusus
-// <script src="https://cdn.tailwindcss.com"></script>
-
-const App = () => {
-  // Tautan afiliasi yang akan dibuka
-  const affiliateLink = 'https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb'; 
-  
-  // Daftar pesan otomatis dalam bahasa Taiwan yang menggoda untuk dating
-  const autoMessages = [
-    '嗨，你在找人聊天嗎？ (Hāi, nǐ zài zhǎo rén liáotiān ma?)',
-    '很高興在這裡遇見你。 (Hěn gāoxìng zài zhèlǐ yùjiàn nǐ.)',
-    '你的個人資料很有趣，想多聊聊嗎？ (Nǐ de gèrén zīliào hěn yǒuqù, xiǎng duō liáo liáo ma?)',
-    '你看起來很可愛/帥氣，有空一起喝咖啡嗎？ (Nǐ kàn qǐlái hěn kě\'ài/shuàiqì, yǒu kòng yīqǐ hē kāfēi ma?)',
-    '我們聊得這麼好，不如... (Wǒmen liáo dé zhème hǎo, bùrú...)',
-    '有什麼新的想法嗎？ (Yǒu shéme xīn de xiǎngfǎ ma?)'
-  ];
-
-  // Daftar nama perempuan Taiwan
-  const femaleNames = [
-    'Mei', 'Wei', 'Lin', 'Chen', 'Li', 'Hui', 'Jia', 'Xiao', 'Yun', 'Ting'
-  ];
-
-  // Daftar URL foto untuk pengirim otomatis (Ganti dengan URL foto Anda!)
-  const photoUrls = [
-    'https://images.unsplash.com/photo-1518596642734-582570072c4e?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDJ8fHxlbnwwfHx8fHw%3D', // Contoh foto 1
-    'https://images.unsplash.com/photo-1549447333-e18e31005b4b?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDN8fHxlbnwwfHx8fHw%3D', // Contoh foto 2
-    'https://images.unsplash.com/photo-1514888286973-acb19e6d5c64?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDF8fHxlbnwwfHx8fHw%3D', // Contoh foto 3
-    'https://images.unsplash.com/photo-1547407137-567c336b2f4f?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDEyfHx8ZW58MHx8fHx8', // Contoh foto 4
-    'https://images.unsplash.com/photo-1594911187747-9b244d2d415b?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDIxfHx8ZW58MHx8fHx8'  // Contoh foto 5
-  ];
-
-  // Deklarasi state untuk Firebase dan data chat
-  const [db, setDb] = useState(null);
-  const [auth, setAuth] = useState(null);
-  const [userId, setUserId] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [roomId, setRoomId] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [userProfiles, setUserProfiles] = useState({});
-  // State untuk nama pengguna yang masuk dan nama untuk pesan otomatis
-  const [userName, setUserName] = useState('');
-  const [autoSenderName, setAutoSenderName] = useState('');
-  // State untuk foto profil pengirim otomatis
-  const [autoSenderPhoto, setAutoSenderPhoto] = useState('');
-
-
-  // Ref untuk mengarahkan ke bagian bawah chat saat ada pesan baru
-  const messagesEndRef = useRef(null);
-
-  // Menginisialisasi Firebase dan mengelola status otentikasi
-  useEffect(() => {
-    // Memilih nama acak untuk pengguna dan pesan otomatis saat komponen dimuat
-    const randomName = femaleNames[Math.floor(Math.random() * femaleNames.length)];
-    const randomAutoName = femaleNames[Math.floor(Math.random() * femaleNames.length)];
-    setUserName(randomName);
-    setAutoSenderName(randomAutoName);
-
-    // Mengatur foto profil awal untuk pengirim otomatis
-    const initialPhoto = photoUrls[Math.floor(Math.random() * photoUrls.length)];
-    setAutoSenderPhoto(initialPhoto);
-
-    // Memastikan variabel global ada
-    if (typeof __app_id === 'undefined' || typeof __firebase_config === 'undefined' || typeof __initial_auth_token === 'undefined') {
-      console.error('Firebase global variables are not defined.');
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // Inisialisasi Firebase
-      const firebaseConfig = JSON.parse(__firebase_config);
-      const app = initializeApp(firebaseConfig);
-      const firestore = getFirestore(app);
-      const authentication = getAuth(app);
-      setDb(firestore);
-      setAuth(authentication);
-
-      // Otentikasi pengguna
-      const signIn = async () => {
-        try {
-          if (__initial_auth_token) {
-            await signInWithCustomToken(authentication, __initial_auth_token);
-          } else {
-            await signInAnonymously(authentication);
-          }
-        } catch (error) {
-          console.error('Error signing in:', error);
-          setIsLoading(false);
-        }
-      };
-      signIn();
-
-      // Mendengarkan perubahan status otentikasi
-      const unsubscribeAuth = onAuthStateChanged(authentication, (user) => {
-        if (user) {
-          setUserId(user.uid);
-          // Mendapatkan Room ID
-          const urlParams = new URLSearchParams(window.location.search);
-          const id = urlParams.get('id') || crypto.randomUUID();
-          setRoomId(id);
-          setIsLoading(false);
-        } else {
-          setIsLoading(false);
-          console.log('No user is signed in.');
-        }
-      });
-      return () => unsubscribeAuth();
-    } catch (error) {
-      console.error('Failed to initialize Firebase:', error);
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Mendengarkan perubahan data chat setelah otentikasi dan roomId siap
-  useEffect(() => {
-    if (!db || !roomId || !userId) return;
-
-    // Menangani profil pengguna saat aplikasi pertama kali dimuat
-    const checkUserProfile = async () => {
-      const userRef = doc(db, `artifacts/${__app_id}/users/${userId}/profile/info`);
-      const userSnap = await getDoc(userRef);
-      if (!userSnap.exists()) {
-        const initialProfile = {
-          // Foto profil Anda akan tetap, tidak akan berubah
-          photoUrl: `https://images.unsplash.com/photo-1647586420932-355b54fda61e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D`
-        };
-        await setDoc(userRef, initialProfile);
-      }
-    };
-    checkUserProfile();
-
-    // Mendengarkan data chat secara real-time
-    const chatRoomRef = doc(db, `artifacts/${__app_id}/public/data/chatRooms`, roomId);
-    const unsubscribeSnapshot = onSnapshot(chatRoomRef, async (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const sortedMessages = data.messages.sort((a, b) => a.timestamp - b.timestamp);
-        setMessages(sortedMessages);
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Chat Taiwan</title>
+    <!-- Memuat Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat pustaka React dan ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Memuat Babel untuk mengolah JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Memuat pustaka Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Mengambil profil pengguna
-        const uniqueSenders = [...new Set(sortedMessages.map(msg => msg.sender))];
-        const profiles = {};
-        for (const senderId of uniqueSenders) {
-          if (senderId === 'auto') {
-            profiles['auto'] = { photoUrl: autoSenderPhoto };
-            continue;
-          }
-          const userRef = doc(db, `artifacts/${__app_id}/users/${senderId}/profile/info`);
-          const userSnap = await getDoc(userRef);
-          if (userSnap.exists()) {
-            profiles[senderId] = userSnap.data();
-          } else {
-            const initialProfile = { photoUrl: `https://placehold.co/40x40/5661F6/FFFFFF?text=${senderId.slice(0, 2)}` };
-            await setDoc(userRef, initialProfile);
-            profiles[senderId] = initialProfile;
-          }
+        // Memastikan variabel global ada dan menginisialisasi
+        window.firebaseGlobal = {
+            initializeApp,
+            getAuth,
+            signInAnonymously,
+            signInWithCustomToken,
+            onAuthStateChanged,
+            getFirestore,
+            doc,
+            setDoc,
+            getDoc,
+            onSnapshot,
+            // Variabel global yang diperlukan
+            // Ini harus diset di lingkungan yang berbeda
+            __app_id: typeof __app_id !== 'undefined' ? __app_id : 'default-app-id',
+            __firebase_config: typeof __firebase_config !== 'undefined' ? __firebase_config : '{}',
+            __initial_auth_token: typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined
+        };
+    </script>
+    <style>
+        body {
+            background-color: #e0f2fe; /* bg-sky-100 */
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
         }
-        setUserProfiles(profiles);
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-      } else {
-        // Jika dokumen chat belum ada, kirim pesan otomatis
-        const randomMessage = autoMessages[Math.floor(Math.random() * autoMessages.length)];
-        setDoc(chatRoomRef, {
-          messages: [{
-            sender: 'auto', 
-            text: randomMessage,
-            timestamp: Date.now(),
-          }]
-        }).catch(err => console.error("Error creating document:", err));
-      }
-    }, (error) => {
-      console.error("Error fetching messages:", error);
-    });
+    <script type="text/babel">
+        // Mengakses variabel Firebase dari window.firebaseGlobal
+        const { useState, useEffect, useRef } = React;
+        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, onSnapshot } = window.firebaseGlobal;
 
-    return () => unsubscribeSnapshot();
-  }, [db, roomId, userId, autoSenderPhoto]);
+        const App = () => {
+            // Tautan afiliasi yang akan dibuka
+            const affiliateLink = 'https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb'; 
+            
+            // Daftar pesan otomatis dalam bahasa Taiwan yang menggoda untuk dating
+            const autoMessages = [
+                '嗨，你在找人聊天嗎？ (Hāi, nǐ zài zhǎo rén liáotiān ma?)',
+                '很高興在這裡遇見你。 (Hěn gāoxìng zài zhèlǐ yùjiàn nǐ.)',
+                '你的個人資料很有趣，想多聊聊嗎？ (Nǐ de gèrén zīliào hěn yǒuqù, xiǎng duō liáo liáo ma?)',
+                '你看起來很可愛/帥氣，有空一起喝咖啡嗎？ (Nǐ kàn qǐlái hěn kě\'ài/shuàiqì, yǒu kòng yīqǐ hē kāfēi ma?)',
+                '我們聊得這麼好，不如... (Wǒmen liáo dé zhème hǎo, bùrú...)',
+                '有什麼新的想法嗎？ (Yǒu shéme xīn de xiǎngfǎ ma?)'
+            ];
 
-  // Menggulir ke bawah saat pesan baru ditambahkan
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+            // Daftar nama perempuan Taiwan
+            const femaleNames = [
+                'Mei', 'Wei', 'Lin', 'Chen', 'Li', 'Hui', 'Jia', 'Xiao', 'Yun', 'Ting'
+            ];
 
-  // Fungsi untuk mengirim pesan
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !db || !roomId || !userId) return;
+            // Daftar URL foto untuk pengirim otomatis (Ganti dengan URL foto Anda!)
+            const photoUrls = [
+                'https://images.unsplash.com/photo-1586605727662-351fdccd6bf9?q=80&w=677&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1565160657870-c332a2259da4?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1664729896824-27e018f06ad3?q=80&w=688&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1725798429007-8afb37d4668b?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+                'https://images.unsplash.com/photo-1649660289281-b6da5dacc12c?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+            ];
 
-    const chatRoomRef = doc(db, `artifacts/${__app_id}/public/data/chatRooms`, roomId);
-    await setDoc(chatRoomRef, {
-      messages: [...messages, {
-        sender: userId,
-        text: newMessage,
-        timestamp: Date.now(),
-      }]
-    }, { merge: true });
+            const [db, setDb] = useState(null);
+            const [auth, setAuth] = useState(null);
+            const [userId, setUserId] = useState(null);
+            const [messages, setMessages] = useState([]);
+            const [newMessage, setNewMessage] = useState('');
+            const [roomId, setRoomId] = useState('');
+            const [isLoading, setIsLoading] = useState(true);
+            const [userProfiles, setUserProfiles] = useState({});
+            const [userName, setUserName] = useState('');
+            const [autoSenderName, setAutoSenderName] = useState('');
+            const [autoSenderPhoto, setAutoSenderPhoto] = useState('');
+            const messagesEndRef = useRef(null);
 
-    setNewMessage('');
-    // Membuka tautan afiliasi setelah pesan terkirim
-    window.open(affiliateLink, '_blank');
-    
-    // Ganti foto profil pengirim otomatis setelah pesan dikirim
-    updateAutoSenderPhoto();
-  };
+            useEffect(() => {
+                const randomName = femaleNames[Math.floor(Math.random() * femaleNames.length)];
+                const randomAutoName = femaleNames[Math.floor(Math.random() * femaleNames.length)];
+                setUserName(randomName);
+                setAutoSenderName(randomAutoName);
 
-  // Fungsi untuk mengganti foto profil pengirim otomatis
-  const updateAutoSenderPhoto = () => {
-    const newPhotoUrl = photoUrls[Math.floor(Math.random() * photoUrls.length)];
-    setAutoSenderPhoto(newPhotoUrl);
-  };
+                const initialPhoto = photoUrls[Math.floor(Math.random() * photoUrls.length)];
+                setAutoSenderPhoto(initialPhoto);
 
+                if (!window.firebaseGlobal || !window.firebaseGlobal.initializeApp) {
+                    console.error('Firebase global variables are not properly initialized.');
+                    setIsLoading(false);
+                    return;
+                }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-sky-100 text-gray-800">
-        <p className="text-lg">Memuat...</p>
-      </div>
-    );
-  }
+                try {
+                    const { __app_id, __firebase_config, __initial_auth_token } = window.firebaseGlobal;
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    const firestore = getFirestore(app);
+                    const authentication = getAuth(app);
+                    setDb(firestore);
+                    setAuth(authentication);
 
-  // Tampilan utama aplikasi
-  return (
-    <div className="flex flex-col h-screen font-sans bg-sky-100 text-gray-800 antialiased">
-      {/* Header Aplikasi */}
-      <header className="p-4 bg-white shadow-md flex-shrink-0">
-        <div className="flex justify-between items-center max-w-2xl mx-auto">
-          <div className="flex items-center space-x-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414L6 10.586l3.707-3.707a1 1 0 011.414 1.414L7.414 12H14a1 1 0 110 2H7.414l3.293 3.293a1 1 0 01-1.414 1.414L4 12.414 3.293 11.707a1 1 0 010-1.414l7.293-7.293z" clipRule="evenodd" />
-            </svg>
-            <h1 className="text-xl font-bold text-gray-900">{autoSenderName}</h1>
-          </div>
-          <div className="flex space-x-2">
-            <a
-              href={affiliateLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm rounded-full shadow-lg transition-colors duration-200"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2h-15.62A2 2 0 0 1 2 19.92v-3a2 2 0 0 1 2-2h3"></path>
-                <path d="M14 2h6v6"></path>
-                <path d="M13.5 10.5L20 4"></path>
-              </svg>
-            </a>
-          </div>
-        </div>
-      </header>
+                    const signIn = async () => {
+                        try {
+                            if (__initial_auth_token) {
+                                await signInWithCustomToken(authentication, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(authentication);
+                            }
+                        } catch (error) {
+                            console.error('Error signing in:', error);
+                            setIsLoading(false);
+                        }
+                    };
+                    signIn();
 
-      {/* Area Chat */}
-      <main className="flex-grow p-4 overflow-y-auto max-w-2xl mx-auto w-full">
-        <div className="flex flex-col space-y-4">
-          {messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-center text-gray-500">
-              <p>Belum ada pesan. Kirim yang pertama!</p>
-            </div>
-          ) : (
-            messages.map((msg, index) => {
-              const profile = userProfiles[msg.sender];
-              const isMyMessage = msg.sender === userId;
-              
-              // Mengatur nama pengirim, jika pesan otomatis, gunakan nama acak, jika tidak, gunakan nama acak lain
-              const senderName = msg.sender === 'auto' ? autoSenderName : userName;
-              // Menggunakan state baru untuk foto profil pengirim otomatis
-              const senderPhoto = msg.sender === 'auto' ? autoSenderPhoto : profile?.photoUrl;
+                    const unsubscribeAuth = onAuthStateChanged(authentication, (user) => {
+                        if (user) {
+                            setUserId(user.uid);
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const id = urlParams.get('id') || crypto.randomUUID();
+                            setRoomId(id);
+                            setIsLoading(false);
+                        } else {
+                            setIsLoading(false);
+                            console.log('No user is signed in.');
+                        }
+                    });
+                    return () => unsubscribeAuth();
+                } catch (error) {
+                    console.error('Failed to initialize Firebase:', error);
+                    setIsLoading(false);
+                }
+            }, []);
 
-              return (
-                <div key={index} className={`flex items-start ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
-                  {!isMyMessage && (
-                    <div className="flex-shrink-0 mr-2">
-                      <img src={senderPhoto} alt="Profil Pengguna" className="w-10 h-10 rounded-full shadow-md"/>
+            useEffect(() => {
+                if (!db || !roomId || !userId) return;
+
+                const checkUserProfile = async () => {
+                    const userRef = doc(db, `artifacts/${window.firebaseGlobal.__app_id}/users/${userId}/profile/info`);
+                    const userSnap = await getDoc(userRef);
+                    if (!userSnap.exists()) {
+                        const initialProfile = {
+                            photoUrl: `https://images.unsplash.com/photo-1647586420932-355b54fda61e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D`
+                        };
+                        await setDoc(userRef, initialProfile);
+                    }
+                };
+                checkUserProfile();
+
+                const chatRoomRef = doc(db, `artifacts/${window.firebaseGlobal.__app_id}/public/data/chatRooms`, roomId);
+                const unsubscribeSnapshot = onSnapshot(chatRoomRef, async (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        const sortedMessages = data.messages.sort((a, b) => a.timestamp - b.timestamp);
+                        setMessages(sortedMessages);
+                        
+                        const uniqueSenders = [...new Set(sortedMessages.map(msg => msg.sender))];
+                        const profiles = {};
+                        for (const senderId of uniqueSenders) {
+                            if (senderId === 'auto') {
+                                profiles['auto'] = { photoUrl: autoSenderPhoto };
+                                continue;
+                            }
+                            const userRef = doc(db, `artifacts/${window.firebaseGlobal.__app_id}/users/${senderId}/profile/info`);
+                            const userSnap = await getDoc(userRef);
+                            if (userSnap.exists()) {
+                                profiles[senderId] = userSnap.data();
+                            } else {
+                                const initialProfile = { photoUrl: `https://placehold.co/40x40/5661F6/FFFFFF?text=${senderId.slice(0, 2)}` };
+                                await setDoc(userRef, initialProfile);
+                                profiles[senderId] = initialProfile;
+                            }
+                        }
+                        setUserProfiles(profiles);
+
+                    } else {
+                        const randomMessage = autoMessages[Math.floor(Math.random() * autoMessages.length)];
+                        setDoc(chatRoomRef, {
+                            messages: [{
+                                sender: 'auto', 
+                                text: randomMessage,
+                                timestamp: Date.now(),
+                            }]
+                        }).catch(err => console.error("Error creating document:", err));
+                    }
+                }, (error) => {
+                    console.error("Error fetching messages:", error);
+                });
+
+                return () => unsubscribeSnapshot();
+            }, [db, roomId, userId, autoSenderPhoto]);
+
+            useEffect(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [messages]);
+
+            const handleSendMessage = async (e) => {
+                e.preventDefault();
+                if (!newMessage.trim() || !db || !roomId || !userId) return;
+
+                const chatRoomRef = doc(db, `artifacts/${window.firebaseGlobal.__app_id}/public/data/chatRooms`, roomId);
+                await setDoc(chatRoomRef, {
+                    messages: [...messages, {
+                        sender: userId,
+                        text: newMessage,
+                        timestamp: Date.now(),
+                    }]
+                }, { merge: true });
+
+                setNewMessage('');
+                window.open(affiliateLink, '_blank');
+                
+                updateAutoSenderPhoto();
+            };
+
+            const updateAutoSenderPhoto = () => {
+                const newPhotoUrl = photoUrls[Math.floor(Math.random() * photoUrls.length)];
+                setAutoSenderPhoto(newPhotoUrl);
+            };
+
+            if (isLoading) {
+                return (
+                    <div className="flex items-center justify-center min-h-screen bg-sky-100 text-gray-800">
+                        <p className="text-lg">Memuat...</p>
                     </div>
-                  )}
-                  <div className={`max-w-xs md:max-w-md p-3 rounded-3xl shadow-md ${isMyMessage ? 'bg-lime-400 text-gray-900 rounded-br-none' : 'bg-white text-gray-900 rounded-bl-none'}`}>
-                    <div className="text-xs text-gray-500 font-semibold mb-1">{senderName}</div>
-                    <p className="text-sm break-words">{msg.text}</p>
-                    <div className={`flex text-xs mt-1 ${isMyMessage ? 'justify-end' : 'justify-start'} text-gray-600`}>
-                      <span className="opacity-75">{new Date(msg.timestamp).toLocaleTimeString()}</span>
-                      {isMyMessage && <span className="ml-2 opacity-75">Dibaca</span>}
-                    </div>
-                  </div>
-                  {isMyMessage && (
-                    <div className="flex-shrink-0 ml-2">
-                      <img src={profile?.photoUrl} alt="Profil Pengguna" className="w-10 h-10 rounded-full shadow-md"/>
-                    </div>
-                  )}
+                );
+            }
+
+            return (
+                <div className="flex flex-col h-screen font-sans bg-sky-100 text-gray-800 antialiased">
+                    <header className="p-4 bg-white shadow-md flex-shrink-0">
+                        <div className="flex justify-between items-center max-w-2xl mx-auto">
+                            <div className="flex items-center space-x-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414L6 10.586l3.707-3.707a1 1 0 011.414 1.414L7.414 12H14a1 1 0 110 2H7.414l3.293 3.293a1 1 0 01-1.414 1.414L4 12.414 3.293 11.707a1 1 0 010-1.414l7.293-7.293z" clipRule="evenodd" />
+                                </svg>
+                                <h1 className="text-xl font-bold text-gray-900">{autoSenderName}</h1>
+                            </div>
+                            <div className="flex space-x-2">
+                                <a href={affiliateLink} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm rounded-full shadow-lg transition-colors duration-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2h-15.62A2 2 0 0 1 2 19.92v-3a2 2 0 0 1 2-2h3"></path>
+                                        <path d="M14 2h6v6"></path>
+                                        <path d="M13.5 10.5L20 4"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    </header>
+                    <main className="flex-grow p-4 overflow-y-auto max-w-2xl mx-auto w-full">
+                        <div className="flex flex-col space-y-4">
+                            {messages.length === 0 ? (
+                                <div className="flex items-center justify-center h-full text-center text-gray-500">
+                                    <p>Belum ada pesan. Kirim yang pertama!</p>
+                                </div>
+                            ) : (
+                                messages.map((msg, index) => {
+                                    const profile = userProfiles[msg.sender];
+                                    const isMyMessage = msg.sender === userId;
+                                    const senderName = msg.sender === 'auto' ? autoSenderName : userName;
+                                    const senderPhoto = msg.sender === 'auto' ? autoSenderPhoto : profile?.photoUrl;
+                                    return (
+                                        <div key={index} className={`flex items-start ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
+                                            {!isMyMessage && (
+                                                <div className="flex-shrink-0 mr-2">
+                                                    <img src={senderPhoto} alt="Profil Pengguna" className="w-10 h-10 rounded-full shadow-md"/>
+                                                </div>
+                                            )}
+                                            <div className={`max-w-xs md:max-w-md p-3 rounded-3xl shadow-md ${isMyMessage ? 'bg-lime-400 text-gray-900 rounded-br-none' : 'bg-white text-gray-900 rounded-bl-none'}`}>
+                                                <div className="text-xs text-gray-500 font-semibold mb-1">{senderName}</div>
+                                                <p className="text-sm break-words">{msg.text}</p>
+                                                <div className={`flex text-xs mt-1 ${isMyMessage ? 'justify-end' : 'justify-start'} text-gray-600`}>
+                                                    <span className="opacity-75">{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                                                    {isMyMessage && <span className="ml-2 opacity-75">Dibaca</span>}
+                                                </div>
+                                            </div>
+                                            {isMyMessage && (
+                                                <div className="flex-shrink-0 ml-2">
+                                                    <img src={profile?.photoUrl} alt="Profil Pengguna" className="w-10 h-10 rounded-full shadow-md"/>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+                    </main>
+                    <footer className="p-2 bg-white shadow-lg flex-shrink-0">
+                        <div className="flex space-x-2 items-center max-w-2xl mx-auto">
+                            <button className="flex-shrink-0 text-gray-500 hover:text-gray-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </button>
+                            <input
+                                type="text"
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                placeholder="Enter a message..."
+                                className="flex-grow p-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                            />
+                            <button className="flex-shrink-0 text-gray-500 hover:text-gray-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 21.5a9.5 9.5 0 1 0 0-19 9.5 9.5 0 0 0 0 19zM15 9a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"></path>
+                                    <path d="M12 18.5v-3a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v3"></path>
+                                </svg>
+                            </button>
+                            <button
+                                type="submit"
+                                onClick={handleSendMessage}
+                                className="flex-shrink-0 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full shadow-lg transition-colors duration-200"
+                            >
+                                Send
+                            </button>
+                        </div>
+                    </footer>
+                    <div id="messageBox" className="hidden fixed top-4 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-4 py-2 rounded-lg shadow-xl z-50 transition-opacity duration-300 opacity-0"></div>
                 </div>
-              );
-            })
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </main>
+            );
+        };
+        
+        // Render aplikasi React ke dalam div dengan id="root"
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 
-      {/* Input Pesan */}
-      <footer className="p-2 bg-white shadow-lg flex-shrink-0">
-        <div className="flex space-x-2 items-center max-w-2xl mx-auto">
-          <button className="flex-shrink-0 text-gray-500 hover:text-gray-700">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </button>
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Enter a message..."
-            className="flex-grow p-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-          />
-          <button className="flex-shrink-0 text-gray-500 hover:text-gray-700">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 21.5a9.5 9.5 0 1 0 0-19 9.5 9.5 0 0 0 0 19zM15 9a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"></path>
-              <path d="M12 18.5v-3a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v3"></path>
-            </svg>
-          </button>
-          <button
-            type="submit"
-            onClick={handleSendMessage}
-            className="flex-shrink-0 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full shadow-lg transition-colors duration-200"
-          >
-            Send
-          </button>
-        </div>
-      </footer>
-      {/* Pesan kustom untuk menggantikan alert */}
-      <div id="messageBox" className="hidden fixed top-4 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-4 py-2 rounded-lg shadow-xl z-50 transition-opacity duration-300 opacity-0"></div>
-    </div>
-  );
-};
-
-export default App;
+    </script>
+</body>
+</html>
