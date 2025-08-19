@@ -45,20 +45,11 @@
                 'Mei', 'Wei', 'Lin', 'Chen', 'Li', 'Hui', 'Jia', 'Xiao', 'Yun', 'Ting'
             ];
 
-            // Daftar URL foto untuk pengirim otomatis (Ganti dengan URL foto Anda!)
-            const photoUrls = [
-                'https://images.unsplash.com/photo-1518596642734-582570072c4e?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDJ8fHxlbnwwfHx8fHw%3D',
-                'https://images.unsplash.com/photo-1549447333-e18e31005b4b?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDN8fHxlbnwwfHx8fHw%3D',
-                'https://images.unsplash.com/photo-1514888286973-acb19e6d5c64?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDF8fHxlbnwwfHx8fHw%3D',
-                'https://images.unsplash.com/photo-1547407137-567c336b2f4f?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDEyfHx8ZW58MHx8fHx8',
-                'https://images.unsplash.com/photo-1594911187747-9b244d2d415b?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDIxfHx8ZW58MHx8fHx8'
-            ];
-
             const [messages, setMessages] = useState([]);
             const [newMessage, setNewMessage] = useState('');
-            const [userName] = useState(femaleNames[Math.floor(Math.random() * femaleNames.length)]);
+            // Mengubah nama pengguna menjadi "You"
+            const [userName] = useState('You');
             const [autoSenderName] = useState(femaleNames[Math.floor(Math.random() * femaleNames.length)]);
-            const [autoSenderPhoto, setAutoSenderPhoto] = useState(photoUrls[Math.floor(Math.random() * photoUrls.length)]);
             const messagesEndRef = useRef(null);
 
             // Simulasikan pesan awal dari pengirim otomatis
@@ -90,20 +81,6 @@
                 
                 // Buka tautan afiliasi
                 window.open(affiliateLink, '_blank');
-                
-                // Perbarui foto pengirim otomatis secara acak
-                updateAutoSenderPhoto();
-            };
-
-            const updateAutoSenderPhoto = () => {
-                const newPhotoUrl = photoUrls[Math.floor(Math.random() * photoUrls.length)];
-                setAutoSenderPhoto(newPhotoUrl);
-            };
-
-            // Profil pengguna statis
-            const userProfiles = {
-                'user': { photoUrl: 'https://images.unsplash.com/photo-1647586420932-355b54fda61e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
-                'auto': { photoUrl: autoSenderPhoto }
             };
 
             return (
@@ -137,14 +114,8 @@
                                 messages.map((msg, index) => {
                                     const isMyMessage = msg.sender === 'user';
                                     const senderName = isMyMessage ? userName : autoSenderName;
-                                    const senderPhoto = isMyMessage ? userProfiles['user'].photoUrl : userProfiles['auto'].photoUrl;
                                     return (
                                         <div key={index} className={`flex items-start ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
-                                            {!isMyMessage && (
-                                                <div className="flex-shrink-0 mr-2">
-                                                    <img src={senderPhoto} alt="Profil Pengguna" className="w-10 h-10 rounded-full shadow-md"/>
-                                                </div>
-                                            )}
                                             <div className={`max-w-xs md:max-w-md p-3 rounded-3xl shadow-md ${isMyMessage ? 'bg-lime-400 text-gray-900 rounded-br-none' : 'bg-white text-gray-900 rounded-bl-none'}`}>
                                                 <div className="text-xs text-gray-500 font-semibold mb-1">{senderName}</div>
                                                 <p className="text-sm break-words">{msg.text}</p>
@@ -153,11 +124,6 @@
                                                     {isMyMessage && <span className="ml-2 opacity-75">Dibaca</span>}
                                                 </div>
                                             </div>
-                                            {isMyMessage && (
-                                                <div className="flex-shrink-0 ml-2">
-                                                    <img src={senderPhoto} alt="Profil Pengguna" className="w-10 h-10 rounded-full shadow-md"/>
-                                                </div>
-                                            )}
                                         </div>
                                     );
                                 })
