@@ -11,31 +11,6 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <!-- Memuat Babel untuk mengolah JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Memuat pustaka Firebase -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // Memastikan variabel global ada dan menginisialisasi
-        window.firebaseGlobal = {
-            initializeApp,
-            getAuth,
-            signInAnonymously,
-            signInWithCustomToken,
-            onAuthStateChanged,
-            getFirestore,
-            doc,
-            setDoc,
-            getDoc,
-            onSnapshot,
-            // Variabel global yang diperlukan
-            // Ini harus diset di lingkungan yang berbeda
-            __app_id: typeof __app_id !== 'undefined' ? __app_id : 'default-app-id',
-            __firebase_config: typeof __firebase_config !== 'undefined' ? __firebase_config : '{}',
-            __initial_auth_token: typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined
-        };
-    </script>
     <style>
         body {
             background-color: #e0f2fe; /* bg-sky-100 */
@@ -49,9 +24,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // Mengakses variabel Firebase dari window.firebaseGlobal
         const { useState, useEffect, useRef } = React;
-        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, onSnapshot } = window.firebaseGlobal;
 
         const App = () => {
             // Tautan afiliasi yang akan dibuka
@@ -74,161 +47,51 @@
 
             // Daftar URL foto untuk pengirim otomatis (Ganti dengan URL foto Anda!)
             const photoUrls = [
-                'https://images.unsplash.com/photo-1586605727662-351fdccd6bf9?q=80&w=677&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                'https://images.unsplash.com/photo-1565160657870-c332a2259da4?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                'https://images.unsplash.com/photo-1664729896824-27e018f06ad3?q=80&w=688&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                'https://images.unsplash.com/photo-1725798429007-8afb37d4668b?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                'https://images.unsplash.com/photo-1649660289281-b6da5dacc12c?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+                'https://images.unsplash.com/photo-1518596642734-582570072c4e?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDJ8fHxlbnwwfHx8fHw%3D',
+                'https://images.unsplash.com/photo-1549447333-e18e31005b4b?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDN8fHxlbnwwfHx8fHw%3D',
+                'https://images.unsplash.com/photo-1514888286973-acb19e6d5c64?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDF8fHxlbnwwfHx8fHw%3D',
+                'https://images.unsplash.com/photo-1547407137-567c336b2f4f?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDEyfHx8ZW58MHx8fHx8',
+                'https://images.unsplash.com/photo-1594911187747-9b244d2d415b?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDIxfHx8ZW58MHx8fHx8'
             ];
 
-            const [db, setDb] = useState(null);
-            const [auth, setAuth] = useState(null);
-            const [userId, setUserId] = useState(null);
             const [messages, setMessages] = useState([]);
             const [newMessage, setNewMessage] = useState('');
-            const [roomId, setRoomId] = useState('');
-            const [isLoading, setIsLoading] = useState(true);
-            const [userProfiles, setUserProfiles] = useState({});
-            const [userName, setUserName] = useState('');
-            const [autoSenderName, setAutoSenderName] = useState('');
-            const [autoSenderPhoto, setAutoSenderPhoto] = useState('');
+            const [userName] = useState(femaleNames[Math.floor(Math.random() * femaleNames.length)]);
+            const [autoSenderName] = useState(femaleNames[Math.floor(Math.random() * femaleNames.length)]);
+            const [autoSenderPhoto, setAutoSenderPhoto] = useState(photoUrls[Math.floor(Math.random() * photoUrls.length)]);
             const messagesEndRef = useRef(null);
 
+            // Simulasikan pesan awal dari pengirim otomatis
             useEffect(() => {
-                const randomName = femaleNames[Math.floor(Math.random() * femaleNames.length)];
-                const randomAutoName = femaleNames[Math.floor(Math.random() * femaleNames.length)];
-                setUserName(randomName);
-                setAutoSenderName(randomAutoName);
-
-                const initialPhoto = photoUrls[Math.floor(Math.random() * photoUrls.length)];
-                setAutoSenderPhoto(initialPhoto);
-
-                if (!window.firebaseGlobal || !window.firebaseGlobal.initializeApp) {
-                    console.error('Firebase global variables are not properly initialized.');
-                    setIsLoading(false);
-                    return;
-                }
-
-                try {
-                    const { __app_id, __firebase_config, __initial_auth_token } = window.firebaseGlobal;
-                    const firebaseConfig = JSON.parse(__firebase_config);
-                    const app = initializeApp(firebaseConfig);
-                    const firestore = getFirestore(app);
-                    const authentication = getAuth(app);
-                    setDb(firestore);
-                    setAuth(authentication);
-
-                    const signIn = async () => {
-                        try {
-                            if (__initial_auth_token) {
-                                await signInWithCustomToken(authentication, __initial_auth_token);
-                            } else {
-                                await signInAnonymously(authentication);
-                            }
-                        } catch (error) {
-                            console.error('Error signing in:', error);
-                            setIsLoading(false);
-                        }
-                    };
-                    signIn();
-
-                    const unsubscribeAuth = onAuthStateChanged(authentication, (user) => {
-                        if (user) {
-                            setUserId(user.uid);
-                            const urlParams = new URLSearchParams(window.location.search);
-                            const id = urlParams.get('id') || crypto.randomUUID();
-                            setRoomId(id);
-                            setIsLoading(false);
-                        } else {
-                            setIsLoading(false);
-                            console.log('No user is signed in.');
-                        }
-                    });
-                    return () => unsubscribeAuth();
-                } catch (error) {
-                    console.error('Failed to initialize Firebase:', error);
-                    setIsLoading(false);
-                }
+                const randomMessage = autoMessages[Math.floor(Math.random() * autoMessages.length)];
+                setMessages([{
+                    sender: 'auto',
+                    text: randomMessage,
+                    timestamp: Date.now(),
+                }]);
             }, []);
-
-            useEffect(() => {
-                if (!db || !roomId || !userId) return;
-
-                const checkUserProfile = async () => {
-                    const userRef = doc(db, `artifacts/${window.firebaseGlobal.__app_id}/users/${userId}/profile/info`);
-                    const userSnap = await getDoc(userRef);
-                    if (!userSnap.exists()) {
-                        const initialProfile = {
-                            photoUrl: `https://images.unsplash.com/photo-1647586420932-355b54fda61e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D`
-                        };
-                        await setDoc(userRef, initialProfile);
-                    }
-                };
-                checkUserProfile();
-
-                const chatRoomRef = doc(db, `artifacts/${window.firebaseGlobal.__app_id}/public/data/chatRooms`, roomId);
-                const unsubscribeSnapshot = onSnapshot(chatRoomRef, async (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        const sortedMessages = data.messages.sort((a, b) => a.timestamp - b.timestamp);
-                        setMessages(sortedMessages);
-                        
-                        const uniqueSenders = [...new Set(sortedMessages.map(msg => msg.sender))];
-                        const profiles = {};
-                        for (const senderId of uniqueSenders) {
-                            if (senderId === 'auto') {
-                                profiles['auto'] = { photoUrl: autoSenderPhoto };
-                                continue;
-                            }
-                            const userRef = doc(db, `artifacts/${window.firebaseGlobal.__app_id}/users/${senderId}/profile/info`);
-                            const userSnap = await getDoc(userRef);
-                            if (userSnap.exists()) {
-                                profiles[senderId] = userSnap.data();
-                            } else {
-                                const initialProfile = { photoUrl: `https://placehold.co/40x40/5661F6/FFFFFF?text=${senderId.slice(0, 2)}` };
-                                await setDoc(userRef, initialProfile);
-                                profiles[senderId] = initialProfile;
-                            }
-                        }
-                        setUserProfiles(profiles);
-
-                    } else {
-                        const randomMessage = autoMessages[Math.floor(Math.random() * autoMessages.length)];
-                        setDoc(chatRoomRef, {
-                            messages: [{
-                                sender: 'auto', 
-                                text: randomMessage,
-                                timestamp: Date.now(),
-                            }]
-                        }).catch(err => console.error("Error creating document:", err));
-                    }
-                }, (error) => {
-                    console.error("Error fetching messages:", error);
-                });
-
-                return () => unsubscribeSnapshot();
-            }, [db, roomId, userId, autoSenderPhoto]);
 
             useEffect(() => {
                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             }, [messages]);
 
-            const handleSendMessage = async (e) => {
+            const handleSendMessage = (e) => {
                 e.preventDefault();
-                if (!newMessage.trim() || !db || !roomId || !userId) return;
+                if (!newMessage.trim()) return;
 
-                const chatRoomRef = doc(db, `artifacts/${window.firebaseGlobal.__app_id}/public/data/chatRooms`, roomId);
-                await setDoc(chatRoomRef, {
-                    messages: [...messages, {
-                        sender: userId,
-                        text: newMessage,
-                        timestamp: Date.now(),
-                    }]
-                }, { merge: true });
+                // Tambahkan pesan pengguna ke state lokal
+                setMessages(prevMessages => [...prevMessages, {
+                    sender: 'user',
+                    text: newMessage,
+                    timestamp: Date.now(),
+                }]);
 
                 setNewMessage('');
+                
+                // Buka tautan afiliasi
                 window.open(affiliateLink, '_blank');
                 
+                // Perbarui foto pengirim otomatis secara acak
                 updateAutoSenderPhoto();
             };
 
@@ -237,13 +100,11 @@
                 setAutoSenderPhoto(newPhotoUrl);
             };
 
-            if (isLoading) {
-                return (
-                    <div className="flex items-center justify-center min-h-screen bg-sky-100 text-gray-800">
-                        <p className="text-lg">Memuat...</p>
-                    </div>
-                );
-            }
+            // Profil pengguna statis
+            const userProfiles = {
+                'user': { photoUrl: 'https://images.unsplash.com/photo-1647586420932-355b54fda61e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
+                'auto': { photoUrl: autoSenderPhoto }
+            };
 
             return (
                 <div className="flex flex-col h-screen font-sans bg-sky-100 text-gray-800 antialiased">
@@ -274,10 +135,9 @@
                                 </div>
                             ) : (
                                 messages.map((msg, index) => {
-                                    const profile = userProfiles[msg.sender];
-                                    const isMyMessage = msg.sender === userId;
-                                    const senderName = msg.sender === 'auto' ? autoSenderName : userName;
-                                    const senderPhoto = msg.sender === 'auto' ? autoSenderPhoto : profile?.photoUrl;
+                                    const isMyMessage = msg.sender === 'user';
+                                    const senderName = isMyMessage ? userName : autoSenderName;
+                                    const senderPhoto = isMyMessage ? userProfiles['user'].photoUrl : userProfiles['auto'].photoUrl;
                                     return (
                                         <div key={index} className={`flex items-start ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
                                             {!isMyMessage && (
@@ -295,7 +155,7 @@
                                             </div>
                                             {isMyMessage && (
                                                 <div className="flex-shrink-0 ml-2">
-                                                    <img src={profile?.photoUrl} alt="Profil Pengguna" className="w-10 h-10 rounded-full shadow-md"/>
+                                                    <img src={senderPhoto} alt="Profil Pengguna" className="w-10 h-10 rounded-full shadow-md"/>
                                                 </div>
                                             )}
                                         </div>
