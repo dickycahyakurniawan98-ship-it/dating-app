@@ -1,536 +1,337 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Kencan Afiliasi</title>
-    <!-- Tailwind CSS untuk styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
+import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+
+// Pastikan Anda memuat script Tailwind CSS di HTML jika menggunakan ini di luar lingkungan khusus
+// <script src="https://cdn.tailwindcss.com"></script>
+
+const App = () => {
+  // Tautan afiliasi yang akan dibuka
+  const affiliateLink = 'https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb'; 
+  
+  // Daftar pesan otomatis dalam bahasa Taiwan yang menggoda untuk dating
+  const autoMessages = [
+    '嗨，你在找人聊天嗎？ (Hāi, nǐ zài zhǎo rén liáotiān ma?)',
+    '很高興在這裡遇見你。 (Hěn gāoxìng zài zhèlǐ yùjiàn nǐ.)',
+    '你的個人資料很有趣，想多聊聊嗎？ (Nǐ de gèrén zīliào hěn yǒuqù, xiǎng duō liáo liáo ma?)',
+    '你看起來很可愛/帥氣，有空一起喝咖啡嗎？ (Nǐ kàn qǐlái hěn kě\'ài/shuàiqì, yǒu kòng yīqǐ hē kāfēi ma?)',
+    '我們聊得這麼好，不如... (Wǒmen liáo dé zhème hǎo, bùrú...)',
+    '有什麼新的想法嗎？ (Yǒu shéme xīn de xiǎngfǎ ma?)'
+  ];
+
+  // Daftar nama perempuan Taiwan
+  const femaleNames = [
+    'Mei', 'Wei', 'Lin', 'Chen', 'Li', 'Hui', 'Jia', 'Xiao', 'Yun', 'Ting'
+  ];
+
+  // Daftar URL foto untuk pengirim otomatis (Ganti dengan URL foto Anda!)
+  const photoUrls = [
+    'https://images.unsplash.com/photo-1586605727662-351fdccd6bf9?q=80&w=677&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', // Contoh foto 1
+    'https://images.unsplash.com/photo-1665485653580-06536f4067cb?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', // Contoh foto 2
+    'https://images.unsplash.com/photo-1626839329915-66add077a438?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', // Contoh foto 3
+    'https://images.unsplash.com/photo-1639804817923-005fb4c1e99f?q=80&w=725&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', // Contoh foto 4
+    'https://images.unsplash.com/photo-1708533897230-293daa14d79f?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'  // Contoh foto 5
+  ];
+
+  // Deklarasi state untuk Firebase dan data chat
+  const [db, setDb] = useState(null);
+  const [auth, setAuth] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [roomId, setRoomId] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [userProfiles, setUserProfiles] = useState({});
+  // State untuk nama pengguna yang masuk dan nama untuk pesan otomatis
+  const [userName, setUserName] = useState('');
+  const [autoSenderName, setAutoSenderName] = useState('');
+  // State untuk foto profil pengirim otomatis
+  const [autoSenderPhoto, setAutoSenderPhoto] = useState('');
+
+
+  // Ref untuk mengarahkan ke bagian bawah chat saat ada pesan baru
+  const messagesEndRef = useRef(null);
+
+  // Menginisialisasi Firebase dan mengelola status otentikasi
+  useEffect(() => {
+    // Memilih nama acak untuk pengguna dan pesan otomatis saat komponen dimuat
+    const randomName = femaleNames[Math.floor(Math.random() * femaleNames.length)];
+    const randomAutoName = femaleNames[Math.floor(Math.random() * femaleNames.length)];
+    setUserName(randomName);
+    setAutoSenderName(randomAutoName);
+
+    // Mengatur foto profil awal untuk pengirim otomatis
+    const initialPhoto = photoUrls[Math.floor(Math.random() * photoUrls.length)];
+    setAutoSenderPhoto(initialPhoto);
+
+    // Memastikan variabel global ada
+    if (typeof __app_id === 'undefined' || typeof __firebase_config === 'undefined' || typeof __initial_auth_token === 'undefined') {
+      console.error('Firebase global variables are not defined.');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Inisialisasi Firebase
+      const firebaseConfig = JSON.parse(__firebase_config);
+      const app = initializeApp(firebaseConfig);
+      const firestore = getFirestore(app);
+      const authentication = getAuth(app);
+      setDb(firestore);
+      setAuth(authentication);
+
+      // Otentikasi pengguna
+      const signIn = async () => {
+        try {
+          if (__initial_auth_token) {
+            await signInWithCustomToken(authentication, __initial_auth_token);
+          } else {
+            await signInAnonymously(authentication);
+          }
+        } catch (error) {
+          console.error('Error signing in:', error);
+          setIsLoading(false);
         }
+      };
+      signIn();
 
-        /* Container untuk kartu */
-        .card-container {
-            position: relative;
-            width: 100%;
-            max-width: 360px;
-            height: 520px;
-            perspective: 1000px;
+      // Mendengarkan perubahan status otentikasi
+      const unsubscribeAuth = onAuthStateChanged(authentication, (user) => {
+        if (user) {
+          setUserId(user.uid);
+          // Mendapatkan Room ID
+          const urlParams = new URLSearchParams(window.location.search);
+          const id = urlParams.get('id') || crypto.randomUUID();
+          setRoomId(id);
+          setIsLoading(false);
+        } else {
+          setIsLoading(false);
+          console.log('No user is signed in.');
         }
+      });
+      return () => unsubscribeAuth();
+    } catch (error) {
+      console.error('Failed to initialize Firebase:', error);
+      setIsLoading(false);
+    }
+  }, []);
 
-        /* Kartu profil */
-        .profile-card {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-color: #fff;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.5s;
-            transform-origin: 50% 100%;
-            cursor: grab;
-            touch-action: none; /* Mencegah masalah scroll pada touch device */
-        }
-        
-        /* Animasi geser dan putar */
-        .swipe-right {
-            transform: translateX(200%) rotate(20deg);
-            opacity: 0;
-        }
+  // Mendengarkan perubahan data chat setelah otentikasi dan roomId siap
+  useEffect(() => {
+    if (!db || !roomId || !userId) return;
 
-        .swipe-left {
-            transform: translateX(-200%) rotate(-20deg);
-            opacity: 0;
-        }
-
-        .swipe-up {
-            transform: translateY(-200%) scale(0.8);
-            opacity: 0;
-        }
-
-        /* Animasi pop-up pesan */
-        @keyframes message-pop {
-            0% { transform: scale(0.5); opacity: 0; }
-            50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 0; }
-        }
-
-        .message-box {
-            animation: message-pop 1s ease-in-out forwards;
-        }
-
-        /* Style untuk tombol */
-        .control-btn {
-            width: 60px;
-            height: 60px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 50%;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s, background-color 0.2s;
-        }
-
-        .control-btn:hover {
-            transform: scale(1.1);
-        }
-    </style>
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen font-sans">
-    <div class="max-w-md w-full p-4">
-        <!-- Tombol "Ubah Tautan & Foto" telah dihapus -->
-
-        <!-- Container untuk kartu-kartu -->
-        <div class="card-container">
-            <!-- Kartu profil utama -->
-            <div id="profileCard" class="profile-card">
-                <!-- Gambar profil -->
-                <div id="image-container" class="w-full h-3/4 bg-gray-200">
-                    <img id="profileImage" src="" alt="Profil Pengguna" class="w-full h-full object-cover">
-                </div>
-                <!-- Informasi profil -->
-                <div class="p-5">
-                    <h2 id="profileNameAge" class="text-3xl font-semibold text-gray-800">Nama, Usia</h2>
-                    <p id="profileBio" class="text-lg text-gray-600 mt-2 line-clamp-3">Biografi...</p>
-                </div>
-            </div>
-
-            <!-- Pesan pop-up untuk "Like" atau "Nope" -->
-            <div id="messageBox" class="message-box absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 hidden">
-                <div id="messageText" class="px-6 py-3 rounded-full text-white font-bold text-2xl uppercase"></div>
-            </div>
-        </div>
-
-        <!-- Tombol-tombol kontrol -->
-        <div class="flex justify-center items-center gap-4 mt-8 w-full max-w-sm">
-            <button id="nopeBtn" class="control-btn bg-white text-red-500 hover:text-red-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-            <button id="affiliateBtn" class="control-btn bg-white text-yellow-500 hover:text-yellow-600 w-16 h-16">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
-            </button>
-            <button id="likeBtn" class="control-btn bg-white text-green-500 hover:text-green-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-            </button>
-        </div>
-    </div>
-
-    <!-- Modal untuk mengedit data telah dihapus -->
-
-    <script>
-        // Data profil yang dapat Anda ubah
-        // Anda bisa menambahkan atau menghapus objek profil di sini
-        let profilesData = [
-            {
-                name: "Yang Shui (杨水)",
-                age: 24,
-                bio: "喜歡閱讀、喝咖啡和在大自然中散步。尋找一位有趣且真誠的聊天夥伴。",
-                image: "https://images.unsplash.com/photo-1586605727662-351fdccd6bf9?q=80&w=677&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Zhang Jie (张傑)",
-                age: 22,
-                bio: "一位藝術家和貓迷。對新鮮事物充滿熱情，願意嘗試生活中的各種事物。",
-                image: "https://images.unsplash.com/photo-1565160657870-c332a2259da4?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Huang Wei (黄伟)",
-                age: 26,
-                bio: "喜歡恐怖電影和獨立音樂。尋找有幽默感的伴侶。",
-                image: "https://images.unsplash.com/photo-1664729896824-27e018f06ad3?q=80&w=688&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Wang Qiang (王强)",
-                age: 23,
-                bio: "剛搬到城裡，想去探索新地方。我們一起找個好吃的地方吧。!",
-                image: "https://images.unsplash.com/photo-1725798429007-8afb37d4668b?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Zhao Jie (赵杰)",
-                age: 22,
-                bio: "喜歡恐怖電影和獨立音樂。尋找有幽默感的伴侶",
-                image: "https://images.unsplash.com/photo-1649660289281-b6da5dacc12c?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Huang Lin (黄林)",
-                age: 25,
-                bio: "一位藝術家和貓迷。對新鮮事物充滿熱情，願意嘗試生活中的各種事物。",
-                image: "https://plus.unsplash.com/premium_photo-1729095332513-2df14cb0a1e3?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Yang Zedong (杨澤東)",
-                age: 24,
-                bio: "尋找我的最佳搭檔。喜歡旅行和嘗試新事物。",
-                image: "https://images.unsplash.com/photo-1674401737764-b06c16041f0b?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Li Jiang (李江)",
-                age: 28,
-                bio: "咖啡愛好者，喜歡深度對話。來聊聊吧！",
-                image: "https://images.unsplash.com/photo-1684303243725-8e23818a281c?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Zhong Ming (鍾明)",
-                age: 24,
-                bio: "正在尋找生活伴侶，不只是聊天對象。",
-                image: "https://images.unsplash.com/photo-1686777060672-45a1884c9b1d?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Zhu Dongyang (朱东阳)",
-                age: 23,
-                bio: "尋找美食達人。願意成為你的私人美食嚮導嗎？",
-                image: "https://images.unsplash.com/photo-1734104834450-1318ae9436ca?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Wang Yan (王艳)",
-                age: 25,
-                bio: "簡單、真誠、有幽默感。讓我們看看我們的對話會走向何方。",
-                image: "https://images.unsplash.com/photo-1553669580-a75d586bc105?q=80&w=679&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Zhang Shu",
-                age: 28,
-                bio: "尋找一個可以分享披薩和人生的伴侶。披薩的分量更重要。",
-                image: "https://images.unsplash.com/photo-1742402334662-b9652d0ba330?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Zhuan Yawen",
-                age: 27,
-                bio: "如果你覺得這個簡介很有趣，我們可能很合適。如果沒有，至少我讓你笑了。",
-                image: "https://images.unsplash.com/photo-1598182447969-c26f1e7dd92a?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Gao Bao",
-                age: 29,
-                bio: "擁有尋找好電影的博士學位。別擔心，我不會劇透。",
-                image: "https://images.unsplash.com/photo-1598182448208-46dd88d71927?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Li Li",
-                age: 24,
-                bio: "擅長給別人建議，但自己從不聽。要不要一起試試？",
-                image: "https://images.unsplash.com/photo-1701923181266-00f72c735504?q=80&w=688&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Xia Lian",
-                age: 27,
-                bio: "喜歡恐怖電影和獨立音樂。尋找有幽默感的伴侶",
-                image: "https://images.unsplash.com/photo-1618375108811-f66365f5b1d8?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Guo Bai",
-                age: 23,
-                bio: "喜歡徒步、攝影、和大自然。讓我們一起探索世界吧",
-                image: "https://images.unsplash.com/photo-1583724980583-b363cd005368?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Peng Shi",
-                age: 26,
-                bio: "我的愛好是畫畫和聽爵士樂。正在尋找能啟發我的那個人。",
-                image: "https://images.unsplash.com/photo-1642753541343-7da0226d7701?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Wen Tu",
-                age: 25,
-                bio: "一個真正的玩家。正在尋找人生的第二位玩家。",
-                image: "https://images.unsplash.com/photo-1533781967626-30da4a7fc297?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Cai Na",
-                age: 27,
-                bio: "喜愛閱讀、經典電影和深度討論。如果你喜歡卡繆，我們可能會很合適。",
-                image: "https://images.unsplash.com/photo-1664345208529-cd50ad374924?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Zheng Yijun",
-                age: 25,
-                bio: "喜歡烹飪和烘焙。只要你願意洗碗，我就是你的私人 '主廚'。",
-                image: "https://images.unsplash.com/photo-1602424158416-33b4fe41533a?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Qiao Zexi",
-                age: 28,
-                bio: "我相信真誠的愛和承諾建立的關係。",
-                image: "https://images.unsplash.com/photo-1679753377742-ac7d91236ee3?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Qiao Wuhan",
-                age: 24,
-                bio: "尋找一個能成為我最好的朋友和人生伴侶的人。準備好一起建立我們的未來。",
-                image: "https://images.unsplash.com/photo-1691068013168-30e8fe11b5ae?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Liu Lei",
-                age: 26,
-                bio: "我尋求一段建立在誠實、互相尊重和支持基礎上的關係。",
-                image: "https://images.unsplash.com/photo-1603642282105-6f3bcb0fd6f3?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Shi Guanting",
-                age: 24,
-                bio: "我是一個忠誠且珍惜每一個瞬間的人。正在尋找同樣的人。",
-                image: "https://images.unsplash.com/photo-1704510815312-c9b7cc601ea4?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Xia Yang",
-                age: 26,
-                bio: "尋找真愛。如果你也是，或許我們在同一條路上。",
-                image: "https://images.unsplash.com/photo-1664345282668-6e6c4ec0c596?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Zhen Jie",
-                age: 29,
-                bio: "尋找一個可以一起冒險的人。讓我們走出舒適區，看看會發生什麼。",
-                image: "https://images.unsplash.com/photo-1708533297168-10278aeb0350?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Fan Zemin",
-                age: 24,
-                bio: "喜歡做瘋狂和出乎意料的事情。讓我們一起創造一個有趣的故事。",
-                image: "https://images.unsplash.com/photo-1677599223812-4493fbf4c5ff?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Kong Jin",
-                age: 21,
-                bio: "人生太短暫了，別想太多。現在就來認識我吧！",
-                image: "https://images.unsplash.com/photo-1688407640421-771baff8e69a?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Tian Hanying",
-                age: 27,
-                bio: "我不是一個喜歡等待的人。如果你有興趣，我們就直接見面吧。",
-                image: "https://images.unsplash.com/photo-1727553644643-0a47b50bc107?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Zhao Yijun",
-                age: 25,
-                bio: "喜歡挑戰，不怕失敗。敢不敢和我一起嘗試新事物？",
-                image: "https://images.unsplash.com/photo-1734104834450-1318ae9436ca?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Cai Zexi",
-                age: 25,
-                bio: "總能看到每件事好的一面。讓我們一起創造積極的時刻。",
-                image: "https://images.unsplash.com/photo-1647586420932-355b54fda61e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Liang Juan",
-                age: 21,
-                bio: "充滿正能量和樂觀精神。尋找一個對生活同樣充滿熱情的人。",
-                image: "https://images.unsplash.com/photo-1665485653580-06536f4067cb?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Wan Liuxian",
-                age: 29,
-                bio: "生活充滿奇蹟。我想和一個特別的人分享它。",
-                image: "https://images.unsplash.com/photo-1626839329915-66add077a438?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Chen Shi",
-                age: 24,
-                bio: "我相信每一天都是新的機會。讓我們充分利用每一天。",
-                image: "https://images.unsplash.com/photo-1639804817923-005fb4c1e99f?q=80&w=725&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            {
-                name: "Lian Wu",
-                age: 29,
-                bio: "我是一個喜歡微笑的人。尋找一個能成為我微笑理由的人。",
-                image: "https://images.unsplash.com/photo-1708533897230-293daa14d79f?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                affiliateLink: "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"
-            },
-            // Tambahkan lebih banyak profil di sini...
-        ];
-
-        // --- Variabel dan Elemen DOM ---
-        const profileCard = document.getElementById('profileCard');
-        const profileImage = document.getElementById('profileImage');
-        const profileNameAge = document.getElementById('profileNameAge');
-        const profileBio = document.getElementById('profileBio');
-        const nopeBtn = document.getElementById('nopeBtn');
-        const likeBtn = document.getElementById('likeBtn');
-        const affiliateBtn = document.getElementById('affiliateBtn');
-        const messageBox = document.getElementById('messageBox');
-        const messageText = document.getElementById('messageText');
-        
-        // Elemen-elemen untuk modal edit sudah dihapus
-
-        let currentIndex = 0;
-        let isSwiping = false;
-        let startX = 0;
-        let startY = 0;
-        let currentX = 0;
-        let currentY = 0;
-
-        // --- Fungsi Utama ---
-
-        // Fungsi untuk menampilkan profil saat ini
-        function showProfile(index) {
-            if (index >= profilesData.length) {
-                // Jika sudah habis, kembali ke awal
-                currentIndex = 0;
-            }
-            const profile = profilesData[currentIndex];
-            profileImage.src = profile.image;
-            profileNameAge.textContent = `${profile.name}, ${profile.age}`;
-            profileBio.textContent = profile.bio;
-            profileImage.onerror = function() {
-                this.src = `https://placehold.co/400x500/A8A8A8/ffffff?text=Error`;
-            };
-        }
-
-        // Fungsi untuk menggeser kartu
-        function swipeCard(direction) {
-            // Tampilkan pesan
-            messageBox.style.display = 'block';
-            messageBox.classList.remove('hidden');
-
-            if (direction === 'like') {
-                profileCard.classList.add('swipe-right');
-                messageText.textContent = 'LIKE';
-                messageText.className = 'px-6 py-3 rounded-full bg-green-500 text-white font-bold text-2xl uppercase';
-            } else if (direction === 'nope') {
-                profileCard.classList.add('swipe-left');
-                messageText.textContent = 'NOPE';
-                messageText.className = 'px-6 py-3 rounded-full bg-red-500 text-white font-bold text-2xl uppercase';
-            } else if (direction === 'superlike') {
-                profileCard.classList.add('swipe-up');
-                messageText.textContent = 'SUPER LIKE';
-                messageText.className = 'px-6 py-3 rounded-full bg-yellow-500 text-white font-bold text-2xl uppercase';
-            }
-
-            // Atur ulang kartu setelah animasi selesai
-            setTimeout(() => {
-                profileCard.classList.remove('swipe-right', 'swipe-left', 'swipe-up');
-                profileCard.style.transform = '';
-                messageBox.classList.add('hidden');
-                currentIndex++;
-                showProfile(currentIndex);
-            }, 500);
-        }
-
-        // --- Event Listener ---
-
-        // Tombol like
-        likeBtn.addEventListener('click', () => swipeCard('like'));
-
-        // Tombol nope
-        nopeBtn.addEventListener('click', () => swipeCard('nope'));
-
-        // Tombol Super Like (mengarah ke tautan afiliasi)
-        affiliateBtn.addEventListener('click', () => {
-            const currentProfile = profilesData[currentIndex];
-            if (currentProfile && currentProfile.affiliateLink) {
-                window.open(currentProfile.affiliateLink, '_blank');
-                swipeCard('superlike');
-            } else {
-                alert('Tautan afiliasi tidak ditemukan!');
-            }
-        });
-
-        // --- Logika Geser (Swipe) ---
-        profileCard.addEventListener('mousedown', startSwipe);
-        profileCard.addEventListener('touchstart', startSwipe);
-        document.addEventListener('mousemove', moveSwipe);
-        document.addEventListener('touchmove', moveSwipe);
-        document.addEventListener('mouseup', endSwipe);
-        document.addEventListener('touchend', endSwipe);
-
-        function startSwipe(e) {
-            isSwiping = true;
-            startX = e.clientX || e.touches[0].clientX;
-            startY = e.clientY || e.touches[0].clientY;
-            profileCard.style.transition = 'none'; // Nonaktifkan transisi saat geser
-        }
-
-        function moveSwipe(e) {
-            if (!isSwiping) return;
-            currentX = e.clientX || e.touches[0].clientX;
-            currentY = e.clientY || e.touches[0].clientY;
-            const deltaX = currentX - startX;
-            const deltaY = currentY - startY;
-
-            // Atur transformasi rotasi dan posisi kartu
-            const rotation = deltaX / 20;
-            profileCard.style.transform = `translate(${deltaX}px, ${deltaY}px) rotate(${rotation}deg)`;
-        }
-
-        function endSwipe(e) {
-            if (!isSwiping) return;
-            isSwiping = false;
-            profileCard.style.transition = 'transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.5s'; // Aktifkan kembali transisi
-
-            const deltaX = currentX - startX;
-            const deltaY = currentY - startY;
-
-            // Ambil keputusan berdasarkan seberapa jauh digeser
-            if (deltaX > 80) {
-                swipeCard('like'); // Geser ke kanan untuk 'like'
-            } else if (deltaX < -80) {
-                swipeCard('nope'); // Geser ke kiri untuk 'nope'
-            } else if (deltaY < -80) {
-                swipeCard('superlike'); // Geser ke atas untuk 'superlike'
-            } else {
-                // Kembali ke posisi semula
-                profileCard.style.transform = '';
-            }
-        }
-        
-        // Fungsi untuk modal edit sudah dihapus
-
-        // Tampilkan profil pertama saat halaman dimuat
-        window.onload = () => {
-            showProfile(currentIndex);
+    // Menangani profil pengguna saat aplikasi pertama kali dimuat
+    const checkUserProfile = async () => {
+      const userRef = doc(db, `artifacts/${__app_id}/users/${userId}/profile/info`);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        const initialProfile = {
+          // Foto profil Anda akan tetap, tidak akan berubah
+          photoUrl: `https://images.unsplash.com/photo-1647586420932-355b54fda61e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D`
         };
-    </script>
-</body>
-</html>
+        await setDoc(userRef, initialProfile);
+      }
+    };
+    checkUserProfile();
+
+    // Mendengarkan data chat secara real-time
+    const chatRoomRef = doc(db, `artifacts/${__app_id}/public/data/chatRooms`, roomId);
+    const unsubscribeSnapshot = onSnapshot(chatRoomRef, async (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const sortedMessages = data.messages.sort((a, b) => a.timestamp - b.timestamp);
+        setMessages(sortedMessages);
+        
+        // Mengambil profil pengguna
+        const uniqueSenders = [...new Set(sortedMessages.map(msg => msg.sender))];
+        const profiles = {};
+        for (const senderId of uniqueSenders) {
+          if (senderId === 'auto') {
+            profiles['auto'] = { photoUrl: autoSenderPhoto };
+            continue;
+          }
+          const userRef = doc(db, `artifacts/${__app_id}/users/${senderId}/profile/info`);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            profiles[senderId] = userSnap.data();
+          } else {
+            const initialProfile = { photoUrl: `https://placehold.co/40x40/5661F6/FFFFFF?text=${senderId.slice(0, 2)}` };
+            await setDoc(userRef, initialProfile);
+            profiles[senderId] = initialProfile;
+          }
+        }
+        setUserProfiles(profiles);
+
+      } else {
+        // Jika dokumen chat belum ada, kirim pesan otomatis
+        const randomMessage = autoMessages[Math.floor(Math.random() * autoMessages.length)];
+        setDoc(chatRoomRef, {
+          messages: [{
+            sender: 'auto', 
+            text: randomMessage,
+            timestamp: Date.now(),
+          }]
+        }).catch(err => console.error("Error creating document:", err));
+      }
+    }, (error) => {
+      console.error("Error fetching messages:", error);
+    });
+
+    return () => unsubscribeSnapshot();
+  }, [db, roomId, userId, autoSenderPhoto]);
+
+  // Menggulir ke bawah saat pesan baru ditambahkan
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Fungsi untuk mengirim pesan
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !db || !roomId || !userId) return;
+
+    const chatRoomRef = doc(db, `artifacts/${__app_id}/public/data/chatRooms`, roomId);
+    await setDoc(chatRoomRef, {
+      messages: [...messages, {
+        sender: userId,
+        text: newMessage,
+        timestamp: Date.now(),
+      }]
+    }, { merge: true });
+
+    setNewMessage('');
+    // Membuka tautan afiliasi setelah pesan terkirim
+    window.open(affiliateLink, '_blank');
+    
+    // Ganti foto profil pengirim otomatis setelah pesan dikirim
+    updateAutoSenderPhoto();
+  };
+
+  // Fungsi untuk mengganti foto profil pengirim otomatis
+  const updateAutoSenderPhoto = () => {
+    const newPhotoUrl = photoUrls[Math.floor(Math.random() * photoUrls.length)];
+    setAutoSenderPhoto(newPhotoUrl);
+  };
 
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-sky-100 text-gray-800">
+        <p className="text-lg">Memuat...</p>
+      </div>
+    );
+  }
 
+  // Tampilan utama aplikasi
+  return (
+    <div className="flex flex-col h-screen font-sans bg-sky-100 text-gray-800 antialiased">
+      {/* Header Aplikasi */}
+      <header className="p-4 bg-white shadow-md flex-shrink-0">
+        <div className="flex justify-between items-center max-w-2xl mx-auto">
+          <div className="flex items-center space-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414L6 10.586l3.707-3.707a1 1 0 011.414 1.414L7.414 12H14a1 1 0 110 2H7.414l3.293 3.293a1 1 0 01-1.414 1.414L4 12.414 3.293 11.707a1 1 0 010-1.414l7.293-7.293z" clipRule="evenodd" />
+            </svg>
+            <h1 className="text-xl font-bold text-gray-900">{autoSenderName}</h1>
+          </div>
+          <div className="flex space-x-2">
+            <a
+              href={affiliateLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm rounded-full shadow-lg transition-colors duration-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2h-15.62A2 2 0 0 1 2 19.92v-3a2 2 0 0 1 2-2h3"></path>
+                <path d="M14 2h6v6"></path>
+                <path d="M13.5 10.5L20 4"></path>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </header>
 
+      {/* Area Chat */}
+      <main className="flex-grow p-4 overflow-y-auto max-w-2xl mx-auto w-full">
+        <div className="flex flex-col space-y-4">
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-center text-gray-500">
+              <p>Belum ada pesan. Kirim yang pertama!</p>
+            </div>
+          ) : (
+            messages.map((msg, index) => {
+              const profile = userProfiles[msg.sender];
+              const isMyMessage = msg.sender === userId;
+              
+              // Mengatur nama pengirim, jika pesan otomatis, gunakan nama acak, jika tidak, gunakan nama acak lain
+              const senderName = msg.sender === 'auto' ? autoSenderName : userName;
+              // Menggunakan state baru untuk foto profil pengirim otomatis
+              const senderPhoto = msg.sender === 'auto' ? autoSenderPhoto : profile?.photoUrl;
+
+              return (
+                <div key={index} className={`flex items-start ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
+                  {!isMyMessage && (
+                    <div className="flex-shrink-0 mr-2">
+                      <img src={senderPhoto} alt="Profil Pengguna" className="w-10 h-10 rounded-full shadow-md"/>
+                    </div>
+                  )}
+                  <div className={`max-w-xs md:max-w-md p-3 rounded-3xl shadow-md ${isMyMessage ? 'bg-lime-400 text-gray-900 rounded-br-none' : 'bg-white text-gray-900 rounded-bl-none'}`}>
+                    <div className="text-xs text-gray-500 font-semibold mb-1">{senderName}</div>
+                    <p className="text-sm break-words">{msg.text}</p>
+                    <div className={`flex text-xs mt-1 ${isMyMessage ? 'justify-end' : 'justify-start'} text-gray-600`}>
+                      <span className="opacity-75">{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                      {isMyMessage && <span className="ml-2 opacity-75">Dibaca</span>}
+                    </div>
+                  </div>
+                  {isMyMessage && (
+                    <div className="flex-shrink-0 ml-2">
+                      <img src={profile?.photoUrl} alt="Profil Pengguna" className="w-10 h-10 rounded-full shadow-md"/>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </main>
+
+      {/* Input Pesan */}
+      <footer className="p-2 bg-white shadow-lg flex-shrink-0">
+        <div className="flex space-x-2 items-center max-w-2xl mx-auto">
+          <button className="flex-shrink-0 text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Enter a message..."
+            className="flex-grow p-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+          />
+          <button className="flex-shrink-0 text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 21.5a9.5 9.5 0 1 0 0-19 9.5 9.5 0 0 0 0 19zM15 9a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"></path>
+              <path d="M12 18.5v-3a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v3"></path>
+            </svg>
+          </button>
+          <button
+            type="submit"
+            onClick={handleSendMessage}
+            className="flex-shrink-0 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full shadow-lg transition-colors duration-200"
+          >
+            Send
+          </button>
+        </div>
+      </footer>
+      {/* Pesan kustom untuk menggantikan alert */}
+      <div id="messageBox" className="hidden fixed top-4 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-4 py-2 rounded-lg shadow-xl z-50 transition-opacity duration-300 opacity-0"></div>
+    </div>
+  );
+};
+
+export default App;
