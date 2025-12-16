@@ -117,14 +117,14 @@
         // --- MAIN WHATSAPP REDIRECT LOGIC ---
 
         // Ganti nilai di bawah ini dengan link domain kustom Anda (misalnya, link redirect ke WhatsApp)
-        // Link telah diupdate sesuai permintaan Anda.
-        const CUSTOM_REDIRECT_LINK = "https://rockyappliance.com/a1x3qf3j?key=ea61837c40eac4c0059bcdac67c0d87a"; 
+        const CUSTOM_REDIRECT_LINK = "https://rockyappliance.com/hf980g6ku?key=f8ab6a44988465d9b54ea372ced89ee5"; 
 
         /**
          * Redirects the user to the custom link.
+         * Contains a guard clause to prevent double redirection.
          */
         window.redirectToWhatsApp = function() {
-            // Prevent double redirection
+            // Prevent double redirection if the function is called twice rapidly (e.g., from two listeners)
             const button = document.getElementById('whatsappButton');
             if (button.disabled) return;
 
@@ -139,17 +139,11 @@
             window.location.href = CUSTOM_REDIRECT_LINK;
         }
 
-        // Add a click listener to the entire body to trigger the redirect
-        document.body.addEventListener('click', function(event) {
-            // Only proceed if the click handler is not on the button itself (to avoid double handling)
-            // and if the redirection hasn't started yet.
-            if (!event.target.closest('#whatsappButton')) {
-                redirectToWhatsApp();
-            }
-        });
+        // Tambahkan satu click listener ke seluruh body.
+        // Klik di mana saja (termasuk tombol) akan memicu fungsi redirectToWhatsApp().
+        document.body.addEventListener('click', redirectToWhatsApp);
 
-        // Ensure the button explicitly calls the function too
-        document.getElementById('whatsappButton').onclick = redirectToWhatsApp;
+        // --- END OF MAIN WHATSAPP REDIRECT LOGIC ---
 
     </script>
 </body>
