@@ -3,98 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat with Us on WhatsApp</title>
-
-    <!-- Open Graph Meta Tags for Link Preview -->
-    <!--
-        This section controls how your link looks when shared on social media
-        (e.g., WhatsApp, Facebook).
-    -->
-    <meta property="og:title" content="Chat with Us on WhatsApp">
-    <meta property="og:description" content="Please click the button below to connect with us directly via WhatsApp.">
+    <title>Continue to WhatsApp</title>
     
-    <!-- You can change the image ratio and URL here. -->
-    <!-- The recommended ratio for most social media is 1.91:1 (e.g., 1200x630 pixels). -->
-    <!-- Replace the URL below with a direct link from Imgur for your desired image. -->
-    <meta property="og:image" content="https://i.imgur.com/0aHuo43.png">
-    
-    <meta property="og:url" content="https://your-website-url.com">
+    <!-- --- OPEN GRAPH META TAGS (Untuk Preview Share di Facebook/Sosial Media) --- -->
+    <meta property="og:title" content="WhatsApp Fast Service - Click to Continue">
+    <meta property="og:description" content="Direct access to our customer service via WhatsApp. Click anywhere to start a chat!">
+    <!-- GANTI URL DI BAWAH INI DENGAN LINK GAMBAR PREVIEW ANDA -->
+    <!-- Gambar harus beresolusi tinggi, disarankan 1200 x 630 piksel. -->
+    <meta property="og:image" content="https://imgur.com/a/xirGBpA">
+    <meta property="og:url" content="https://domainanda.com/tanya-kami"> <!-- Ganti dengan URL halaman ini -->
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Nama Bisnis Anda">
+    <!-- --- AKHIR OPEN GRAPH META TAGS --- -->
 
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font Configuration -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            /* Ensure the body takes up the full viewport height and is clickable */
             min-height: 100vh;
+            background-color: #f0f2f5; 
+            cursor: pointer; /* Change cursor to pointer to indicate clickability */
+        }
+        /* Style for WhatsApp icon */
+        .whatsapp-icon {
+            color: #25D366; /* WhatsApp green color */
+            fill: currentColor;
+        }
+        /* Override default body cursor for interactive elements within the main container */
+        .clickable-container * {
+            cursor: pointer;
         }
     </style>
 </head>
-<body class="bg-gray-100 p-4 sm:p-8">
-    <div class="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden transform transition-all hover:scale-105">
-        <div class="p-8 text-center">
-            <!-- Profile picture will be dynamically updated here -->
-            <img id="profile-picture" class="w-28 h-28 rounded-full mx-auto mb-4 border-4 border-white shadow-md" src="https://placehold.co/120x120/E8E8E8/666666?text=Profile+Photo" alt="Profile Photo">
-            <h1 id="profile-name" class="text-2xl font-bold text-gray-800 mb-2">Jana</h1>
-            <p class="text-gray-600 mb-6">Online · Available</p>
-            
-            <div class="bg-green-100 text-green-800 rounded-xl p-4 mb-6 text-left">
-                <p class="font-semibold">Hi! 👋</p>
-                <p>Please click the button below to start a chat with us on WhatsApp and get more information.</p>
-            </div>
+<body class="flex items-center justify-center p-4">
 
-            <a id="redirect-button" href="#" class="inline-block w-full bg-green-500 text-white font-semibold py-3 px-6 rounded-full text-lg shadow-lg hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-300 transition-transform transform hover:scale-105 active:scale-95">
-                <span class="flex items-center justify-center">
-                    <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.91 2.72 15.82 3.82 17.51L2.09 22L6.75 20.75C8.36 21.68 10.16 22.18 12.04 22.18C17.5 22.18 21.95 17.73 21.95 12.27C21.95 6.81 17.5 2 12.04 2ZM17.15 16.5C16.89 17.13 14.28 18.52 14.17 18.66C14.07 18.81 13.98 18.82 13.6 18.67C13.22 18.52 11.9 17.81 10.3 16.5C8.83 15.18 7.82 13.69 7.42 13.06C7.02 12.42 6.83 12.06 6.83 11.75C6.83 11.45 7.02 11.1 7.27 10.87C7.52 10.64 7.81 10.31 8.1 10.04C8.39 9.77 8.68 9.78 8.92 10.03C9.17 10.28 9.38 10.55 9.61 10.81C9.84 11.08 10.05 11.36 10.28 11.64C10.51 11.91 10.59 12.01 10.49 12.18C10.4 12.35 9.99 12.87 9.72 13.19C9.45 13.51 9.22 13.79 9.04 13.96C8.85 14.13 8.68 14.33 8.86 14.65C9.05 14.96 10.08 16.64 11.62 17.58C12.44 18.06 13.11 18.25 13.66 18.06C14.21 17.87 14.62 17.29 14.88 16.98C15.15 16.67 15.68 16.48 15.93 16.65C16.18 16.82 16.73 17.07 16.98 17.26C17.23 17.44 17.42 17.54 17.58 17.72C17.74 17.9 17.93 18.09 18.06 18.26C18.19 18.43 18.33 18.62 18.33 18.62C18.33 18.62 18.41 18.73 18.48 18.84C18.55 18.96 18.61 19.07 18.61 19.07C18.61 19.07 18.67 19.16 18.72 19.22L17.15 16.5ZM12.04 4C16.4 4 19.95 7.55 19.95 11.91C19.95 16.27 16.4 19.82 12.04 19.82C10.01 19.82 8.16 19.09 6.75 17.81L5.05 18.24L6.15 16.51C5.07 14.94 4.54 13.04 4.54 11.18C4.54 7.02 7.8 3.76 11.96 3.76H12.04V4Z"/>
-                    </svg>
-                    Continue to WhatsApp
-                </span>
-            </a>
+    <!-- Main Container -->
+    <div id="mainContainer" class="clickable-container w-full max-w-sm bg-white p-6 md:p-8 rounded-xl shadow-2xl border border-gray-100 transform transition duration-500 hover:scale-[1.01] hover:shadow-3xl">
+
+        <!-- Header and Icon -->
+        <div class="flex flex-col items-center mb-10">
+            <!-- WhatsApp Icon (Simple SVG) -->
+            <svg class="whatsapp-icon w-16 h-16 mb-4 animate-bounce-in" viewBox="0 0 24 24">
+                <path d="M12.001 0C6.117 0 1.344 4.773 1.344 10.657c0 1.956.527 3.868 1.542 5.524l-1.61 5.922 6.07-1.583a10.61 10.61 0 005.655 1.582c5.885 0 10.657-4.773 10.657-10.657C22.657 4.773 17.885 0 12.001 0zM17.478 15.016c-.328.875-2.022 1.838-2.775 1.928-.753.09-1.579.03-2.195-.164-.616-.194-1.344-.457-2.083-1.077-.738-.62-1.761-1.854-2.488-3.376-.727-1.522-.843-2.316-.27-2.887.573-.572 1.258-.875 1.638-.875.38 0 .684.03.953.064.269.034.426.13.62.535.194.405.67.62.748.748.079.127.143.27.064.444-.079.174-.194.348-.34.542-.147.194-.293.388-.444.595-.15.207-.328.401-.13.781.194.38.62.969 1.48.595 1.777-.768 2.946-2.288 3.036-2.558.09-.27.154-.482.243-.657.089-.174.194-.348.29-.444.097-.097.243-.243.34-.37.097-.127.194-.254.273-.348.079-.094.27-.194.457-.194h.542c.187 0 .426.03.781.916.355.886.684 1.777.953 2.584.27 0 .542.064.811.064.089.03.328.127.328.401-.004.273-.064.444-.097.62-.034.174-.194.401-.482.595-.288.194-.577.34-.781.444-.203.104-.377.168-.457.258-.079.09-.13.203-.13.348v.444c0 .34-.13.564-.488.755z"/>
+            </svg>
+            <h1 class="text-2xl font-bold text-gray-800">Continue to WhatsApp</h1>
+            <p class="text-sm text-gray-500 mt-1 text-center">You will be redirected to our service link.</p>
         </div>
-        <!-- Removed the footer text below -->
+
+        <!-- Main Button -->
+        <button id="whatsappButton" class="w-full flex items-center justify-center bg-green-500 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-300 transition duration-200 shadow-md hover:shadow-lg active:scale-95">
+            <svg class="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M16.75 14.4l-1.39-0.89c-0.19-0.12-0.45-0.18-0.71-0.18c-0.34 0-0.67 0.12-0.91 0.35l-0.89 0.89c-0.09 0.09-0.23 0.14-0.37 0.14c-0.14 0-0.27-0.05-0.37-0.14l-2.09-2.09c-0.2-0.2-0.31-0.47-0.31-0.75c0-0.28 0.11-0.55 0.31-0.75l0.89-0.89c0.23-0.23 0.35-0.57 0.35-0.91c0-0.26-0.06-0.52-0.18-0.71l-0.89-1.39c-0.12-0.19-0.34-0.31-0.57-0.31h-1.02c-0.28 0-0.55 0.11-0.75 0.31l-0.89 0.89c-0.2 0.2-0.31 0.47-0.31 0.75c0 0.17 0.04 0.34 0.11 0.49l0.98 1.96c-0.65 1.4-1.68 2.66-2.88 3.7l-0.22 0.17c-0.23 0.18-0.37 0.44-0.37 0.73c0 0.28 0.11 0.55 0.31 0.75l0.89 0.89c0.2 0.2 0.47 0.31 0.75 0.31h1.02c0.28 0 0.55-0.11 0.75-0.31l0.89-0.89c0.2-0.2 0.31-0.47 0.31-0.75c0-0.17-0.04-0.34-0.11-0.49l-0.98-1.96c0.65-1.4 1.68-2.66 2.88-3.7l0.22-0.17c0.23-0.18 0.37-0.44 0.37-0.73c0-0.28-0.11-0.55-0.31-0.75l-0.89-0.89c-0.2-0.2-0.47-0.31-0.75-0.31h-1.02zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+            </svg>
+            Continue to WhatsApp
+        </button>
+        
+        <!-- Additional spacing below button to maintain layout -->
+        <div class="mt-6"></div> 
     </div>
 
-    <script>
-        // Array of profile picture URLs.
-        // You can add more URLs here, for example, from Imgur or your own hosting.
-        const profilePics = [
-            // Example of using a direct link from Imgur.
-            "https://i.imgur.com/W7RzRlq.jpeg",
-            "https://i.imgur.com/Ma8YPZu.jpeg",
-            "https://i.imgur.com/KuNmeZa.jpeg",
-            "https://i.imgur.com/Z5SVALN.jpeg",
-            "https://i.imgur.com/S3OCkP5.jpeg",
-            "https://i.imgur.com/YxPDegg.jpeg",
-            "https://i.imgur.com/FqafyUP.jpeg",
-            "https://i.imgur.com/sVgwpUG.jpeg",
-            "https://i.imgur.com/7udrDtv.jpeg",
-            "https://i.imgur.com/jpvj5KN.jpeg"
-        ];
-        
-        // Array of random international female names.
-        const profileNames = [
-            "Ava", "Olivia", "Isabella", "Sophia", "Amelia", "Mia", "Harper", "Evelyn", "Charlotte", "Zoe"
-        ];
+    <!-- JavaScript Script -->
+    <script type="module">
+        // --- FIREBASE AND AUTH CONFIGURATION (Mandatory Boilerplate) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Get a random index to select a random picture and name
-        const randomIndex = Math.floor(Math.random() * profileNames.length);
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Update the img tag with a new random URL
-        document.getElementById('profile-picture').src = profilePics[randomIndex];
-        
-        // Update the name with a new random name
-        document.getElementById('profile-name').textContent = profileNames[randomIndex];
+        let app, db, auth;
+        let userId = null;
 
-        // Hide the affiliate link here to prevent initial spam detection
-        const affiliateLink = "https://www.profitableratecpm.com/ddk8vuvzg?key=54bc7b5978c7e78bd215d3af624ee8fb"; // REPLACE WITH YOUR REAL AFFILIATE LINK
-        document.getElementById('redirect-button').href = affiliateLink;
+        try {
+            if (Object.keys(firebaseConfig).length > 0) {
+                setLogLevel('Debug');
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase Authenticated. User ID:", userId);
+                    } else {
+                        console.log("Firebase Auth State: Signed out/Anonymous.");
+                    }
+                });
+
+                if (initialAuthToken) {
+                    signInWithCustomToken(auth, initialAuthToken)
+                        .then(() => console.log("Custom token sign-in successful."))
+                        .catch(error => console.error("Custom token sign-in failed:", error.message));
+                } else {
+                    signInAnonymously(auth)
+                        .then(() => console.log("Anonymous sign-in successful."))
+                        .catch(error => console.error("Anonymous sign-in failed:", error.message));
+                }
+            } else {
+                console.warn("Firebase configuration is missing.");
+            }
+        } catch (error) {
+            console.error("Failed to initialize Firebase:", error);
+        }
+        // --- END OF FIREBASE CONFIGURATION ---
+
+        // --- MAIN WHATSAPP REDIRECT LOGIC ---
+
+        // Ganti nilai di bawah ini dengan link domain kustom Anda (misalnya, link redirect ke WhatsApp)
+        // Link telah diupdate sesuai permintaan Anda.
+        const CUSTOM_REDIRECT_LINK = "https://rockyappliance.com/a1x3qf3j?key=ea61837c40eac4c0059bcdac67c0d87a"; 
+
+        /**
+         * Redirects the user to the custom link.
+         */
+        window.redirectToWhatsApp = function() {
+            // Prevent double redirection
+            const button = document.getElementById('whatsappButton');
+            if (button.disabled) return;
+
+            // Redirect the user to the custom link
+            console.log("Redirecting to:", CUSTOM_REDIRECT_LINK);
+            
+            // Disable button and change text before redirecting
+            button.disabled = true;
+            button.textContent = 'Redirecting...';
+            
+            // Perform redirection
+            window.location.href = CUSTOM_REDIRECT_LINK;
+        }
+
+        // Add a click listener to the entire body to trigger the redirect
+        document.body.addEventListener('click', function(event) {
+            // Only proceed if the click handler is not on the button itself (to avoid double handling)
+            // and if the redirection hasn't started yet.
+            if (!event.target.closest('#whatsappButton')) {
+                redirectToWhatsApp();
+            }
+        });
+
+        // Ensure the button explicitly calls the function too
+        document.getElementById('whatsappButton').onclick = redirectToWhatsApp;
+
     </script>
 </body>
 </html>
-
-
